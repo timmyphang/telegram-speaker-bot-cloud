@@ -1,0 +1,16 @@
+[Unit]
+Description=Telegram Speaker Bot (Cloud)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=timphang
+WorkingDirectory=/home/timphang/telegram-speaker-bot-cloud
+ExecStart=/home/timphang/telegram-speaker-bot-cloud/venv/bin/python3 -u bot.py
+Restart=always
+RestartSec=10
+Environment=PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+
+[Install]
+WantedBy=multi-user.target
