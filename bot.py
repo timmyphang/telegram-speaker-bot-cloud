@@ -11,7 +11,12 @@ import requests
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from dotenv import load_dotenv
-from google_broadcast import broadcast_to_google_home
+try:
+    from google_broadcast import broadcast_to_google_home
+except ImportError:
+    def broadcast_to_google_home(msg):
+        print("Broadcast skipped (Google Assistant not available): " + str(msg))
+        return False
 
 load_dotenv()
 
