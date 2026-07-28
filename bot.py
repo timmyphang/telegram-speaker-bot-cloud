@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Cloud Telegram Bot - Azure OpenAI + Brave Search + Google Home Broadcast
+# Cloud Telegram Bot - OpenRouter (Ling 3.0 Flash) + Brave Search + Google Home Broadcast
 # Runs on GCP VM, broadcasts TTS to Google Home via Google Assistant SDK
 
 import os
@@ -23,12 +23,10 @@ load_dotenv()
 # Configuration
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
-# Azure OpenAI Configuration
-AZURE_ENDPOINT = os.environ.get("AZURE_ENDPOINT", "https://gai-443-openai.openai.azure.com/openai")
-AZURE_API_KEY = os.environ.get("AZURE_API_KEY")
-AZURE_MODEL = "gpt-4o-mini"
-AZURE_DEPLOYMENT = "gpt-4o-mini"
-AZURE_API_VERSION = "2025-04-01-preview"
+# OpenRouter Configuration
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
+OPENROUTER_MODEL = "inclusionai/ling-3.0-flash:free"
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 # Brave Search API
 BRAVE_API_KEY = os.environ.get("BRAVE_API_KEY")
@@ -61,8 +59,8 @@ def brave_search(query):
         return []
 
 
-def call_azure_llm(user_message, search_context="", image_url=None):
-    """Call Azure OpenAI with Chat Completions API"""
+def call_llm(user_message, search_context="", image_url=None):
+    """Call OpenRouter Chat Completions API with Ling 3.0 Flash"""
     if image_url:
         system_prompt = "When analyzing images: If there is text or words in the image, transcribe ONLY the text exactly as it appears. Do NOT add descriptions, explanations, or any additional content beyond the transcribed text. Only respond with the text found in the image."
     else:
@@ -85,8 +83,9 @@ def call_azure_llm(user_message, search_context="", image_url=None):
         messages.append({"role": "user", "content": user_message})
 
     try:
-        url = f"{AZURE_ENDPOINT}/deployments/{AZURE_DEPLOYMENT}/chat/completions?api-version={AZURE_API_VERSION}"
+        url = f"{OPENROUTER_BASE_URL}/chat/completions"
         payload = {
+            "model": OPENROUTER_MODEL,
             "messages": messages,
             "max_tokens": 100,
             "temperature": 0.7
@@ -94,7 +93,7 @@ def call_azure_llm(user_message, search_context="", image_url=None):
         response = requests.post(
             url,
             headers={
-                "api-key": AZURE_API_KEY,
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
                 "Content-Type": "application/json"
             },
             json=payload,
@@ -105,7 +104,7 @@ def call_azure_llm(user_message, search_context="", image_url=None):
             return result["choices"][0]["message"]["content"]
         return None
     except Exception as e:
-        print(f"Azure API error: {e}")
+        print(f"OpenRouter API error: {e}")
         return None
 
 
@@ -128,7 +127,7 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         image_base64 = base64.b64encode(image_buffer.read()).decode('utf-8')
         image_data_url = f"data:image/jpeg;base64,{image_base64}"
 
-        llm_response = call_azure_llm(
+        llm_response = call_llm(
             "Transcribe all text visible in this image exactly as it appears.",
             image_url=image_data_url
         )
@@ -152,7 +151,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             search_context = "\n\n".join(search_results[:3])
 
         await update.message.chat.send_action("typing")
-        llm_response = call_azure_llm(user_message, search_context)
+        llm_response = call_llm(user_message, search_context)
         if llm_response:
             broadcast_to_google_home(llm_response)
             await update.message.reply_text(llm_response)
@@ -168,7 +167,7 @@ def main():
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(MessageHandler(filters.PHOTO, handle_image))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    print("Cloud Telegram bot running with Azure GPT-4o Mini + Brave Search + Google Home Broadcast...")
+    print("Cloud Telegram bot running with OpenRouter Ling 3.0 Flash + Brave Search + Google Home Broadcast...")
     app.run_polling(poll_interval=1)
 
 
