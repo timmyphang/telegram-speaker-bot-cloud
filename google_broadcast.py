@@ -84,26 +84,16 @@ def broadcast_to_google_home(message):
     stub = embedded_assistant_pb2_grpc.EmbeddedAssistantStub(channel)
 
     try:
-        # Split message into chunks of ~200 chars at sentence/word boundaries
-        MAX_CHUNK = 200
-        if len(message) <= MAX_CHUNK:
-            chunks = [message]
-        else:
-            chunks = []
-            remaining = message
-            while remaining:
-                if len(remaining) <= MAX_CHUNK:
-                    chunks.append(remaining)
-                    break
-                # Try to split at sentence boundary
-                split_at = remaining[:MAX_CHUNK].rfind(". ")
-                if split_at == -1:
-                    split_at = remaining[:MAX_CHUNK].rfind(" ")
-                if split_at == -1:
-                    split_at = MAX_CHUNK
-                chunks.append(remaining[:split_at + 1].strip())
-                remaining = remaining[split_at + 1:].strip()
-
+        # Truncate to ~200 chars for a single broadcast
+        MAX_LEN = 200
+        if len(message) > MAX_LEN:
+            split_at = message[:MAX_LEN].rfind(". ")
+            if split_at == -1:
+                split_at = message[:MAX_LEN].rfind(" ")
+            if split_at == -1:
+                split_at = MAX_LEN
+            message = message[:split_at + 1].strip()
+        chunks = [message]
         for i, chunk in enumerate(chunks):
             try:
                 _send_broadcast(stub, creds, chunk)

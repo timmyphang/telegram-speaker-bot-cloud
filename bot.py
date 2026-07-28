@@ -24,9 +24,9 @@ load_dotenv()
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
 # OpenRouter Configuration
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
-OPENROUTER_MODEL = "inclusionai/ling-3.0-flash:free"
-OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
+DEEPSEEK_MODEL = "deepseek-v4-flash"
+DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 
 # Brave Search API
 BRAVE_API_KEY = os.environ.get("BRAVE_API_KEY")
@@ -60,14 +60,11 @@ def brave_search(query):
 
 
 def call_llm(user_message, search_context="", image_url=None):
-    """Call OpenRouter Chat Completions API with Ling 3.0 Flash"""
+    """Call DeepSeek API"""
     if image_url:
         system_prompt = "When analyzing images: If there is text or words in the image, transcribe ONLY the text exactly as it appears. Do NOT add descriptions, explanations, or any additional content beyond the transcribed text. Only respond with the text found in the image."
     else:
-        system_prompt = "You are a friendly helper. Explain things in a simple way that a 7 year old can understand. Use short sentences and easy words. Keep your response under 30 words so it can be spoken aloud quickly. Use metric measurements (kilometers, kilograms, Celsius) rather than imperial (miles, pounds, Fahrenheit)."
-
-    if search_context:
-        system_prompt += f"\n\nHere is some context from web search:\n{search_context}"
+        system_prompt = "You are a helpful assistant. Answer the user question using the provided search results. Keep your response under 50 words so it can be spoken aloud. Use metric measurements (km, kg, Celsius). If no search results are provided, use your own knowledge."
 
     messages = [{"role": "system", "content": system_prompt}]
 
@@ -80,20 +77,25 @@ def call_llm(user_message, search_context="", image_url=None):
             ]
         })
     else:
-        messages.append({"role": "user", "content": user_message})
+        if search_context:
+            user_msg = f"Search results:\n{search_context}\n\nUser question: {user_message}"
+        else:
+            user_msg = user_message
+        messages.append({"role": "user", "content": user_msg})
 
     try:
-        url = f"{OPENROUTER_BASE_URL}/chat/completions"
+        url = f"{DEEPSEEK_BASE_URL}/chat/completions"
         payload = {
-            "model": OPENROUTER_MODEL,
+            "model": DEEPSEEK_MODEL,
             "messages": messages,
-            "max_tokens": 100,
+            "max_tokens": 200,
+            "thinking": {"type": "disabled"},
             "temperature": 0.7
         }
         response = requests.post(
             url,
             headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
                 "Content-Type": "application/json"
             },
             json=payload,
@@ -104,7 +106,7 @@ def call_llm(user_message, search_context="", image_url=None):
             return result["choices"][0]["message"]["content"]
         return None
     except Exception as e:
-        print(f"OpenRouter API error: {e}")
+        print(f"DeepSeek API error: {e}")
         return None
 
 
@@ -167,7 +169,7 @@ def main():
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(MessageHandler(filters.PHOTO, handle_image))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    print("Cloud Telegram bot running with OpenRouter Ling 3.0 Flash + Brave Search + Google Home Broadcast...")
+    print("Cloud Telegram bot running with DeepSeek V4 Flash + Brave Search + Google Home Broadcast...")
     app.run_polling(poll_interval=1)
 
 
